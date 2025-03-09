@@ -1,11 +1,13 @@
 name: Build geoip files
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 0 * * 4"
+  # schedule:
+    # - cron: "0 0 * * 4"
   push:
     branches:
       - master
+    paths:
+      - '.github/workflows/build.yml'
     paths-ignore:
       - ".gitignore"
       - "LICENSE*"
@@ -36,10 +38,10 @@ jobs:
           LICENSE_KEY: ${{ secrets.MAXMIND_GEOLITE2_LICENSE }}
         run: |
           mkdir -p output
-          curl -L "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN&license_key=${LICENSE_KEY}&suffix=tar.gz" -o ./output/GeoLite2-ASN.tar.gz
-          curl -L "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN-CSV&license_key=${LICENSE_KEY}&suffix=zip" -o ./output/GeoLite2-ASN-CSV.zip
-          curl -L "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${LICENSE_KEY}&suffix=tar.gz" -o ./output/GeoLite2-Country.tar.gz
-          curl -L "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country-CSV&license_key=${LICENSE_KEY}&suffix=zip" -o ./output/GeoLite2-Country-CSV.zip
+          curl -L "https://raw.githubusercontent.com/Loyalsoldier/geoip/release/GeoLite2-ASN.tar.gz" -o ./output/GeoLite2-ASN.tar.gz
+          curl -L "https://raw.githubusercontent.com/Loyalsoldier/geoip/release/GeoLite2-ASN-CSV.zip" -o ./output/GeoLite2-ASN-CSV.zip
+          curl -L "https://raw.githubusercontent.com/Loyalsoldier/geoip/release/GeoLite2-Country.tar.gz" -o ./output/GeoLite2-Country.tar.gz
+          curl -L "https://raw.githubusercontent.com/Loyalsoldier/geoip/release/GeoLite2-Country-CSV.zip" -o ./output/GeoLite2-Country-CSV.zip
 
       - name: Prepare GeoLite2 databases
         run: |
@@ -63,31 +65,17 @@ jobs:
           go build ./
           ./geoip convert -c ./config.json
 
-      - name: Verify mmdb files
+      - name: Move files to publish directory
         run: |
-          cd ./output || exit 1
-          go install -v github.com/maxmind/mmdbverify@latest
-          for name in $(ls *.mmdb); do
-            $(go env GOPATH)/bin/mmdbverify -file ${name}
-          done
-
-      - name: Generate sha256 checksum for dat files
-        run: |
-          cd ./output || exit 1
-          for name in $(ls *.dat); do
-            sha256sum ${name} > ./${name}.sha256sum
-          done
-
-      - name: Generate sha256 checksum for mmdb files
-        run: |
-          cd ./output || exit 1
-          for name in $(ls *.mmdb); do
-            sha256sum ${name} > ./${name}.sha256sum
-          done
+          mkdir -p publish
+          ls
+          mv ./output/dat/geoip-only-cn-private.dat ./output/maxmind/Country-only-cn-private.mmdb ./publish/
+          cp -fpPR ./output/text ./publish
 
       - name: Git push assets to "release" branch
         run: |
-          cd output || exit 1
+          cd publish || exit 1
+          ls
           git init
           git config --local user.name "github-actions[bot]"
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -105,18 +93,4 @@ jobs:
           done
 
       - name: Remove some files to avoid publishing to GitHub release
-        run: |
-          rm -rf ./output/*.{gz,zip}
-          rm -rf ./output/GeoLite2-*.csv
-          rm -rf ./output/GeoLite2-*.mmdb
-          rm -rf ./output/GeoLite2-*.sha256sum
-          rm -rf ./output/{clash,dat,mrs,nginx,srs,surge,text}
-
-      - name: Upload files to GitHub release
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file_glob: true
-          file: ./output/*
-          release_name: ${{ env.RELEASE_NAME }}
-          tag: ${{ env.TAG_NAME }}
+        run: rm -rf ./publish/*.{gz,zip} ./publish/text
