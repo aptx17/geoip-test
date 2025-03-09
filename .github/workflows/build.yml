@@ -60,13 +60,6 @@ jobs:
           go build ./
           ./geoip convert -c ./config.json
 
-      - name: Move files to publish directory
-        run: |
-          mkdir -p publish
-          ls
-          mv ./output/dat/geoip-only-cn-private.dat ./output/maxmind/Country-only-cn-private.mmdb ./publish/
-          cp -fpPR ./output/text ./publish
-
       - name: Git push assets to "release" branch
         run: |
           cd output || exit 1
