@@ -8,10 +8,7 @@ on:
       - master
     paths:
       - '.github/workflows/build.yml'
-    paths-ignore:
-      - ".gitignore"
-      - "LICENSE*"
-      - "*.md"
+
 jobs:
   build:
     name: Build
@@ -34,8 +31,6 @@ jobs:
         shell: bash
 
       - name: Download GeoLite2 databases
-        env:
-          LICENSE_KEY: ${{ secrets.MAXMIND_GEOLITE2_LICENSE }}
         run: |
           mkdir -p output
           curl -L "https://raw.githubusercontent.com/Loyalsoldier/geoip/release/GeoLite2-ASN.tar.gz" -o ./output/GeoLite2-ASN.tar.gz
